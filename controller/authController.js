@@ -8,12 +8,14 @@ import Doctor from '../models/Doctor.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 export const signup = async (req, res) => {
-  const { name, phone, password, userType, ...rest } = req.body;
+  const { name, phone, password, userType, email, ...rest } = req.body;
 
   try {
     const existingUser = await AuthUser.findOne({ phone });
     if (existingUser) return res.status(400).json({ message: 'Phone already exists' });
-
+    const userModal = userType == 'Patient' ? Patient : Doctor;
+    const existingUserEmail = userModal.findOne({ email });
+    if (existingUserEmail) return res.status(400).json({ message: 'Email already exists' });
     const hashedPassword = await bcrypt.hash(password, 10);
     let userRef;
 

@@ -6,6 +6,7 @@ const PatientSchema = new Schema({
   gender: { type: String, enum: ['Male', 'Female', 'Other'] },
   phone: { type: String, unique: true },
   preferredLanguage: String,
+  email: {type: String, unique: true}
 }, {
   timestamps: true
 });

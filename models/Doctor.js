@@ -13,6 +13,7 @@ const DoctorSchema = new Schema({
         slots: [String]
     }],
     about: String,
+    email: { type: String, unique: true }
 }, {
     timestamps: true
 });
