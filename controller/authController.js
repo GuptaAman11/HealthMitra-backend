@@ -9,12 +9,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 export const signup = async (req, res) => {
   const { name, phone, password, userType, email, ...rest } = req.body;
-
+  
   try {
     const existingUser = await AuthUser.findOne({ phone });
     if (existingUser) return res.status(400).json({ message: 'Phone already exists' });
     const userModal = userType == 'Patient' ? Patient : Doctor;
-    const existingUserEmail = userModal.findOne({ email });
+    const existingUserEmail = await userModal.findOne({ email });
+    console.log("excuting.........")
     if (existingUserEmail) return res.status(400).json({ message: 'Email already exists' });
     const hashedPassword = await bcrypt.hash(password, 10);
     let userRef;
@@ -48,6 +49,7 @@ export const login = async (req, res) => {
   try {
     const user = await AuthUser.findOne({ phone })
       .populate('refId', '-password -__v');
+      
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const valid = await bcrypt.compare(password, user.password);
