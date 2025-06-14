@@ -1,12 +1,22 @@
+import Razorpay from 'razorpay';
 import Appointment from '../models/Appointment.js';
 import Doctor from '../models/Doctor.js';
+import dotenv from 'dotenv';
+import crypto from 'crypto'
 
-/**
- * BOOK AN APPOINTMENT
- */
+dotenv.config();
+
+
+// Razorpay instance
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+
 export const bookAppointment = async (req, res) => {
-  const { doctorId, date, timeSlot } = req.body;
-  const patientId = req.user.userDetials._id;
+  const { doctorId, date, timeSlot,note } = req.body;
+  const patientId = req.user.userDetails._id;
 
   try {
     const doctor = await Doctor.findById(doctorId);
@@ -20,27 +30,78 @@ export const bookAppointment = async (req, res) => {
 
     const weekday = givenDate.toLocaleString('en-US', { weekday: 'long' });
 
-    // Check doctor's availability for the given weekday and slot
     const availableDay = doctor.availability.find(a => a.day === weekday);
     if (!availableDay || !availableDay.slots.includes(timeSlot)) {
       return res.status(400).json({ message: "Doctor is not available at this time" });
     }
 
-    // Check if slot already booked
-    const alreadyBooked = await Appointment.findOne({ doctorId, date, timeSlot });
-    if (alreadyBooked) {
+    const alreadyBooked = await Appointment.find({ doctorId, date, timeSlot , status: 'Scheduled'});
+    if (alreadyBooked.length) {
       return res.status(409).json({ message: "Slot already booked" });
     }
 
-    const appointment = new Appointment({ patientId, doctorId, date, timeSlot });
+    // Calculate fee (you can dynamically set this per doctor later)
+    const amount = 50000; // ₹500 in paise
+
+    // Create Razorpay order
+    const razorpayOrder = await razorpay.orders.create({
+      amount,
+      currency: 'INR',
+      receipt: `receipt_${Date.now()}`,
+      notes: {
+        doctorId,
+        patientId,
+        date,
+        timeSlot
+      }
+    });
+
+    // Temporarily create appointment (status = pending)
+    const appointment = new Appointment({
+      patientId,
+      doctorId,
+      date,
+      timeSlot,
+      paymentStatus: 'pending',
+      razorpayOrderId: razorpayOrder.id,
+      note
+    });
     await appointment.save();
 
-    res.status(201).json({ message: "Appointment booked successfully", appointment });
+    res.status(201).json({
+      message: 'Razorpay order created. Proceed with payment.',
+      appointmentId: appointment._id,
+      razorpayOrder,
+      key: process.env.RAZORPAY_KEY_ID
+    });
 
   } catch (err) {
-    res.status(500).json({ message: "Error booking appointment", error: err.message });
+    res.status(500).json({ message: "Error creating appointment", error: err.message });
   }
 };
+
+
+export const confirmPayment = async (req, res) => {
+  const { appointmentId, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+
+  const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+
+  if (generatedSignature !== razorpay_signature) {
+    return res.status(400).json({ message: 'Invalid payment signature' });
+  }
+
+  // Update appointment
+  await Appointment.findByIdAndUpdate(appointmentId, {
+    paymentStatus: 'paid',
+    razorpayPaymentId: razorpay_payment_id
+  });
+
+  res.status(200).json({ message: 'Payment verified and appointment confirmed' });
+};
+
+
 
 /**
  * GET AVAILABLE DATES FOR A DOCTOR IN A GIVEN MONTH
@@ -71,7 +132,7 @@ export const getDoctorAvailableDaysForMonth = async (req, res) => {
       if (!availability) continue;
 
       const bookedSlots = await Appointment
-        .find({ doctorId, date: dateStr })
+        .find({ doctorId, date: dateStr , status: { $ne: "Cancelled" } })
         .distinct("timeSlot");
 
       const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -116,10 +177,10 @@ export const getAvailableSlotsByDate = async (req, res) => {
     }
 
     const bookedSlots = await Appointment
-      .find({ doctorId, date })
+      .find({ doctorId, date, status: { $ne: "Cancelled" } })
       .distinct("timeSlot");
 
-    const currentTime = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
+    const currentTime = new Date().toLocaleTimeString('en-CA', { hour12: false, hour: '2-digit', minute: '2-digit' });
     const availableSlots = availability.slots.filter(slot => !bookedSlots.includes(slot) && slot >= currentTime);
 
     res.json({ date, weekday, availableSlots });

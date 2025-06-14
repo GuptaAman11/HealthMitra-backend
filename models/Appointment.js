@@ -5,8 +5,18 @@ const AppointmentSchema = new Schema({
   doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor' },
   scheduledAt: Date,
   status: { type: String, enum: ['Scheduled', 'Completed', 'Cancelled'], default: 'Scheduled' },
-  symptoms: [String],
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'failed'],
+    default: 'pending'
+  },
+  timeSlot: String,
+  date: String,
+  razorpayOrderId: String,
+  razorpayPaymentId: String,
+  note: String,
+  cancledNote: String
 });
 
 export default mongoose.model('Appointment', AppointmentSchema);
