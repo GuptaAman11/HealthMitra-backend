@@ -32,7 +32,7 @@ export const signup = async (req, res) => {
       password: hashedPassword
     });
 
-    const token = jwt.sign({ id: authUser._id, userType, userDetials: userRef }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: authUser._id, userType, userDetails: userRef }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({ token, userType, refId: userRef });
   } catch (err) {
@@ -45,15 +45,15 @@ export const login = async (req, res) => {
 
   try {
     const user = await AuthUser.findOne({ phone })
-      .populate('refId', '-_id -password -__v');
+      .populate('refId', '-password -__v');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id, userType: user.userType , userDetials: user.refId}, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user._id, userType: user.userType , userDetails: user.refId}, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(200).json({ token, userType: user.userType, userDetials: user.refId });
+    res.status(200).json({ token, userType: user.userType, userDetails: user.refId });
   } catch (err) {
     res.status(500).json({ message: 'Login error', error: err.message });
   }

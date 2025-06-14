@@ -13,7 +13,8 @@ const DoctorSchema = new Schema({
         slots: [String]
     }],
     about: String,
-    createdAt: { type: Date, default: Date.now }
+}, {
+    timestamps: true
 });
 
 export default mongoose.model('Doctor', DoctorSchema);

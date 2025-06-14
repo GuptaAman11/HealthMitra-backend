@@ -3,12 +3,11 @@ import Doctor from '../models/Doctor.js';
 import Patient from '../models/Patient.js';
 
 export const getProfile = async (req, res) => {
-  const { userType, id } = req.user;
-
+  const loggedInUser = req.user;
   try {
-    let userModel = userType === 'Doctor' ? Doctor : Patient;
-    const user = await userModel.findById(req.userDetails.refId || id);
-    if (!user) return res.status(404).json({ message: `${userType} not found` });
+    let userModel = loggedInUser.userType === 'Doctor' ? Doctor : Patient;
+    const user = await userModel.findById(loggedInUser?.userDetails?._id || loggedInUser.id);
+    if (!user) return res.status(404).json({ message: `${loggedInUser.userType} not found` });
 
     res.json(user);
   } catch (err) {
@@ -17,13 +16,15 @@ export const getProfile = async (req, res) => {
 };
 
 export const updateProfile = async (req, res) => {
-  const { userType, id } = req.user;
+  const { userType, id, userDetails } = req.user;
 
   try {
     let userModel = userType === 'Doctor' ? Doctor : Patient;
+    const { phone, ...update } = req.body;
+
     const updated = await userModel.findByIdAndUpdate(
-      req.userDetails.refId || id,
-      req.body,
+      userDetails._id || id,
+      update,
       { new: true }
     );
     if (!updated) return res.status(404).json({ message: `${userType} not found` });
