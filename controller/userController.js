@@ -7,7 +7,7 @@ export const getProfile = async (req, res) => {
 
   try {
     let userModel = userType === 'Doctor' ? Doctor : Patient;
-    const user = await userModel.findById(req.user.refId || id);
+    const user = await userModel.findById(req.userDetails.refId || id);
     if (!user) return res.status(404).json({ message: `${userType} not found` });
 
     res.json(user);
@@ -22,7 +22,7 @@ export const updateProfile = async (req, res) => {
   try {
     let userModel = userType === 'Doctor' ? Doctor : Patient;
     const updated = await userModel.findByIdAndUpdate(
-      req.user.refId || id,
+      req.userDetails.refId || id,
       req.body,
       { new: true }
     );
