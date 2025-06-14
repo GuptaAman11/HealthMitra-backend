@@ -3,7 +3,8 @@ import {
   bookAppointment,
   getAppointmentById,
   getDoctorAvailableDaysForMonth,
-  getAvailableSlotsByDate
+  getAvailableSlotsByDate,
+  confirmPayment
 } from '../controller/appointmentController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -13,5 +14,6 @@ router.post('/book', protect, bookAppointment);
 router.get('/:id', protect, getAppointmentById);
 router.get('/doctor/:doctorId/available-days', getDoctorAvailableDaysForMonth);
 router.get('/doctor/:doctorId/available-slots', getAvailableSlotsByDate);
+router.post('/book/confirm-payment', protect, confirmPayment);
 
 export default router;

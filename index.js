@@ -2,12 +2,13 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import bookingRoutes from './routes/bookingRoutes.js';
-import serviceRoutes from './routes/serviceRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import doctorRotes from './routes/doctorRotes.js'
 import appointmentRoutes from './routes/appointmentRoutes.js'
+import cancelUnpaidAppointments from './crons/appointementCancelingCron.js';
+import nodeCron from 'node-cron';
+import notificationMailCron from './crons/notificationMailCron.js';
 
 dotenv.config();
 
@@ -20,6 +21,9 @@ app.use('/api/user', userRoutes);
 app.use('/api/doctors', doctorRotes)
 app.use('/api/appointments', appointmentRoutes);
 
+// crons here 
+nodeCron.schedule('*/2 * * * *', cancelUnpaidAppointments);
+nodeCron.schedule('* * * * *', notificationMailCron);
 
 
 const PORT = process.env.PORT || 5000;
