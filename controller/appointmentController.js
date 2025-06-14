@@ -15,7 +15,7 @@ const razorpay = new Razorpay({
 
 
 export const bookAppointment = async (req, res) => {
-  const { doctorId, date, timeSlot,note } = req.body;
+  const { doctorId, date, timeSlot, note } = req.body;
   const patientId = req.user.userDetails._id;
 
   try {
@@ -35,7 +35,7 @@ export const bookAppointment = async (req, res) => {
       return res.status(400).json({ message: "Doctor is not available at this time" });
     }
 
-    const alreadyBooked = await Appointment.find({ doctorId, date, timeSlot , status: 'Scheduled'});
+    const alreadyBooked = await Appointment.find({ doctorId, date, timeSlot, status: 'Scheduled' });
     if (alreadyBooked.length) {
       return res.status(409).json({ message: "Slot already booked" });
     }
@@ -122,7 +122,7 @@ export const getDoctorAvailableDaysForMonth = async (req, res) => {
     const availableDates = [];
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateObj = new Date(year, monthIndex - 1, day); 
+      const dateObj = new Date(year, monthIndex - 1, day);
       if (dateObj < new Date(currentDate.getTime() - 1000 * 60 * 60 * 24)) continue;
 
       const weekday = dateObj.toLocaleString('en-US', { weekday: 'long' });
@@ -132,7 +132,7 @@ export const getDoctorAvailableDaysForMonth = async (req, res) => {
       if (!availability) continue;
 
       const bookedSlots = await Appointment
-        .find({ doctorId, date: dateStr , status: { $ne: "Cancelled" } })
+        .find({ doctorId, date: dateStr, status: { $ne: "Cancelled" } })
         .distinct("timeSlot");
 
       const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -193,21 +193,96 @@ export const getAvailableSlotsByDate = async (req, res) => {
  * GET APPOINTMENT BY ID
  */
 export const getAppointmentById = async (req, res) => {
-    const userID = req.user.userDetials._id;
   try {
+    const userID = req.user.userDetails._id;
     const appointment = await Appointment.findById(req.params.id)
-      .populate('doctorId', 'name specialization')  
+      .populate('doctorId', 'name specialization')
       .populate('patientId', 'name phone');
 
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
-    if(appointment.patientId._id !== userID && appointment.doctorId._id !== userID){
+    if (appointment.patientId._id !== userID && appointment.doctorId._id !== userID) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     res.status(200).json(appointment);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching appointment', error: err.message });
+  }
+};
+
+export const getMyAppointments = async (req, res) => {
+  const userID = req.user.userDetails._id;
+  try {
+    const appointments = await Appointment.find({ $or: [{ patientId: userID }, { doctorId: userID }] })
+      .populate('doctorId', 'name specialization')
+      .populate('patientId', 'name phone');
+    res.status(200).json(appointments);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching appointments', error: err.message });
+  }
+};
+
+
+export const startAppointment = async (req, res) => {
+  const appointmentId = req.params.id;
+
+  try {
+    const userID = req.user.userDetails._id;
+
+    const appointment = await Appointment.findOne({
+      _id: appointmentId,
+      $or: [{ patientId: userID }, { doctorId: userID }],
+      status: 'Scheduled',
+    })
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    const slotTime = new Date(`${appointment.date}T${appointment.timeSlot}`);
+    const currentTime = new Date();
+
+    if (currentTime.toISOString() <= slotTime.toISOString()) {
+      return res.status(400).json({ message: `Cannot start appointment until ${slotTime.toLocaleString('en-CA', { hour12: false })}` });
+    }
+
+    
+    const allowedStartTime = new Date(slotTime.getTime() - 10 * 60 * 1000);
+    if (currentTime > allowedStartTime) {
+      return res.status(400).json({ message: `Cannot start appointment after ${allowedStartTime.toLocaleString('en-CA', { hour12: false })}` });
+    }
+
+    appointment.status = 'Started';
+    await appointment.save();
+
+    res.status(200).json(appointment);
+  } catch (err) {
+    res.status(500).json({ message: 'Error starting appointment', error: err.message });
+  }
+};
+
+export const endAppointment = async (req, res) => {
+  const appointmentId = req.params.id;
+
+  try {
+    const userId = req.user.userDetails._id;
+
+    const appointment = await Appointment.findOne({
+      _id: appointmentId,
+      status: 'Started',
+      $or: [{ patientId: userId }, { doctorId: userId }],
+    })
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    appointment.status = 'Completed';
+    await appointment.save();
+
+    res.status(200).json(appointment);
+  } catch (err) {
+    res.status(500).json({ message: 'Error ending appointment', error: err.message });
   }
 };

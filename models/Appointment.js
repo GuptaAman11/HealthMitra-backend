@@ -4,7 +4,7 @@ const AppointmentSchema = new Schema({
   patientId: { type: Schema.Types.ObjectId, ref: 'Patient' },
   doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor' },
   scheduledAt: Date,
-  status: { type: String, enum: ['Scheduled', 'Completed', 'Cancelled'], default: 'Scheduled' },
+  status: { type: String, enum: ['Scheduled', 'Completed', 'Cancelled', 'Started'], default: 'Scheduled' },
   createdAt: { type: Date, default: Date.now },
   paymentStatus: {
     type: String,
