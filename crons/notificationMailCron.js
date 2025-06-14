@@ -42,6 +42,4 @@ const notificationMailCron = async () => {
   });
 };
 
-notificationMailCron();
-
 export default notificationMailCron;

@@ -14,8 +14,7 @@ export const signup = async (req, res) => {
     const existingUser = await AuthUser.findOne({ phone });
     if (existingUser) return res.status(400).json({ message: 'Phone already exists' });
     const userModal = userType == 'Patient' ? Patient : Doctor;
-    const existingUserEmail = await userModal.findOne({ email });
-    console.log("excuting.........")
+    const existingUserEmail =  await userModal.findOne({ email });
     if (existingUserEmail) return res.status(400).json({ message: 'Email already exists' });
     const hashedPassword = await bcrypt.hash(password, 10);
     let userRef;
