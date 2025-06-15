@@ -4,7 +4,7 @@ import Doctor from '../models/Doctor.js';
 import dotenv from 'dotenv';
 import crypto from 'crypto'
 
-dotenv.config();
+dotenv.config(); 
 
 
 // Razorpay instance
@@ -28,12 +28,12 @@ export const bookAppointment = async (req, res) => {
       return res.status(400).json({ message: "Cannot book appointment for past date" });
     }
 
-    const weekday = givenDate.toLocaleString('en-US', { weekday: 'long' });
+    // const weekday = givenDate.toLocaleString('en-US', { weekday: 'long' });
 
-    const availableDay = doctor.availability.find(a => a.day === weekday);
-    if (!availableDay || !availableDay.slots.includes(timeSlot)) {
-      return res.status(400).json({ message: "Doctor is not available at this time" });
-    }
+    // const availableDay = doctor.availability.find(a => a.day === weekday);
+    // if (!availableDay || !availableDay.slots.includes(timeSlot)) {
+    //   return res.status(400).json({ message: "Doctor is not available at this time" });
+    // }
 
     const alreadyBooked = await Appointment.find({ doctorId, date, timeSlot, status: 'Scheduled' });
     if (alreadyBooked.length) {
@@ -215,10 +215,38 @@ export const getAppointmentById = async (req, res) => {
 export const getMyAppointments = async (req, res) => {
   const userID = req.user.userDetails._id;
   try {
-    const appointments = await Appointment.find({ $or: [{ patientId: userID }, { doctorId: userID }] })
-      .populate('doctorId', 'name specialization')
-      .populate('patientId', 'name phone');
-    res.status(200).json(appointments);
+const appointments = await Appointment.find({
+  $and: [
+    {
+      $or: [
+        { patientId: userID },
+        { doctorId: userID }
+      ]
+    },
+    {
+      status: { $nin: ['Cancelled', 'Completed'] } // exclude both statuses
+    }
+  ]
+}).populate('doctorId', 'name specialization').populate('patientId', 'name phone').sort({ date: 1 }); // or { date: -1 } for descending
+;
+
+      const baseMatch = {
+        $or: [
+          { patientId: userID },
+          { doctorId: userID }
+        ]
+      };
+  
+      const pendingCount = await Appointment.countDocuments({
+        ...baseMatch,
+        status: { $nin: ['Cancelled', 'Completed'] }
+      });
+  
+      const completedCount = await Appointment.countDocuments({
+        ...baseMatch,
+        status: 'Completed'
+      });
+    res.status(200).json({appointments : appointments , pendingCount, completedCount});
   } catch (err) {
     res.status(500).json({ message: 'Error fetching appointments', error: err.message });
   }
@@ -286,3 +314,5 @@ export const endAppointment = async (req, res) => {
     res.status(500).json({ message: 'Error ending appointment', error: err.message });
   }
 };
+
+

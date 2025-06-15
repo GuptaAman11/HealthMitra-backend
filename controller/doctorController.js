@@ -1,6 +1,6 @@
 import SPECIALIZATIONS from "../constant/specialization.constant.js";
 import Doctor from "../models/Doctor.js";
-
+ 
 export const getDoctors = async (req, res) => {
   const { preferredLanguage, preferredSpecialization } = req.query;
   const today = new Date().toLocaleString('en-US', { weekday: 'long' });

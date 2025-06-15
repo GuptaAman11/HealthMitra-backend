@@ -11,7 +11,7 @@ const DoctorSchema = new Schema({
     availability: [{
         day: String,
         slots: [String]
-    }],
+    }], 
     about: String,
     email: { type: String, unique: true }
 }, {

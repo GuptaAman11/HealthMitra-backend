@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 export const signup = async (req, res) => {
   const { name, phone, password, userType, email, ...rest } = req.body;
-  
+  console.log(req.body)
   try {
     const existingUser = await AuthUser.findOne({ phone });
     if (existingUser) return res.status(400).json({ message: 'Phone already exists' });
@@ -20,10 +20,11 @@ export const signup = async (req, res) => {
     let userRef;
 
     if (userType === 'Patient') {
-      userRef = await Patient.create({ name, phone, ...rest });
+      userRef = await Patient.create({ name, phone, email, ...rest });
     } else if (userType === 'Doctor') {
-      userRef = await Doctor.create({ name, phone, ...rest });
-    } else {
+      userRef = await Doctor.create({ name, phone, email, ...rest });
+    }
+    else {
       return res.status(400).json({ message: 'Invalid user type' });
     }
 
