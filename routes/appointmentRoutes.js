@@ -13,6 +13,25 @@ import { protect } from '../middleware/auth.js';
 import Appointment from '../models/Appointment.js';
 
 const router = express.Router();
+router.post('/attendedappointment', protect, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.body.id);
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    // Only the assigned doctor can mark the appointment as completed
+    if (appointment.doctorId.toString() !== req.user.userDetails._id.toString()) {
+      return res.status(403).json({ message: 'Unauthorized: Only the assigned doctor can complete this appointment' });
+    }
+    
+    appointment.status = 'Completed';
+    await appointment.save();
+
+    res.status(200).json({ message: 'Appointment marked as completed', appointment });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating appointment status', error: error.message });
+  }
+});
 router.get('/completed-appointment', protect, async (req, res) => {
   try {
     const userId = req.user.userDetails._id;
